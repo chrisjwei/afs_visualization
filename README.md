@@ -1,6 +1,7 @@
 ndrew File System Visualization
 ##### Summary
 This is a data collection and visualization tool for anyone with access to a unix based file server. Included in this repo is a shell script `run.sh` that uses `sshpass` to ssh into the file server of your choice, runs the [w command], and outputs the results of the command. Alongside it is a wrapper `main.py` which routinely calls `run.sh` on each of the six afs unix machines, parses the output and stores it into a table named `login_history` located in a database named `foo.db`. Each entry in `login_history` is structured as follows although one can choose to include more columns if they want to collect more data.
+
 | id (INTEGER) | who (TEXT) | what (TEXT)               | time (DATETIME)     | serverid (INTEGER)|
 | ------------ | ---------- | ------------------------- | ------------------- | ----------------- |
 | 1            | 'foo'      | `--bash`                  | 2016-02-25 19:56:01 | 1                 |
