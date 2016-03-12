@@ -1,0 +1,46 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<% include ../partials/header.ejs %>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="d3-timeline.js"></script>
+<script>
+var width = 1600;
+
+function timeline(data) {
+  var chart = d3.timeline()
+    .stack() // toggles graph stacking
+    .itemHeight(5)
+    .itemMargin(1)
+    .margin({left:10, right:10, top:0, bottom:0})
+    ;
+  var svg = d3.select("#timeline").append("svg").attr("width", width)
+    .datum(data).call(chart);
+}
+
+$(window).load(function(){
+  var foo = <%- JSON.stringify(context) %>
+  timeline(foo);
+});
+
+</script>
+</head>
+
+
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+</style>
+<body>
+<h2> Creeping </h2>
+<div id="timeline"></div>
+
+</body>
+</html>
+
+
+

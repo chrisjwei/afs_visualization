@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <% include ../partials/header.ejs %>
+</head>
+<style>
+
+body {
+  font: 10px sans-serif;
+}
+
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+
+.bar {
+  fill: orange;
+}
+
+.bar:hover {
+  fill: orangered ;
+}
+
+.x.axis path {
+  display: none;
+}
+
+.d3-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 2px;
+}
+
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+
+/* Style northward tooltips differently */
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
+</style>
+<body>
+<h2> Editors </h2>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+<script>
+
+function hm2m(str){
+  var a = str.split(":");
+  return (+a[0]) * 60 + (+a[1]);
+}
+
+function format_data(data){
+  var new_data = [];
+  var m_curr = 0;
+  data.forEach(function(v,i,a){
+    while (hm2m(v.date) != m_curr){
+      new_data.push({"date": m_curr, "value":0});
+      m_curr += 5;
+    }
+    new_data.push(v);
+    m_curr += 5;
+  });
+  return new_data;
+}
+
+var margin = {top: 40, right: 20, bottom: 100, left: 40},
+    width = 1600 - margin.left - margin.right,
+    height = 500 - margin.top - margin.bottom;
+
+var formatPercent = d3.format(".0%");
+
+var x = d3.scale.ordinal()
+    .rangeRoundBands([0, width], .1);
+
+var y = d3.scale.linear()
+    .range([height, 0]);
+
+var xAxis = d3.svg.axis()
+    .scale(x)
+    .orient("bottom")
+
+var yAxis = d3.svg.axis()
+    .scale(y)
+    .orient("left");
+
+var tip = d3.tip()
+  .attr('class', 'd3-tip')
+  .offset([-10, 0])
+  .html(function(d) {
+    return "<strong>" + d.date + "</strong> <span style='color:red'>" + d.value + " users </span>";
+  })
+
+var foo;
+
+
+$(window).load(function(){
+  var time_domain = [<%- time_domain %>];
+  var ctx = <%- JSON.stringify(context) %>;
+  var data = [];
+  var color = d3.scale.ordinal()
+    .range(["#98abc5", "#8a89a6", "#7b6888", "#6b486b", "#a05d56"]);
+  var languages = ["vim","emacs","nano","gedit"];
+
+  time_domain.forEach(function(t){
+    if (ctx[t+'']){
+      data.push({"time" : t, "values" : ctx[t+'']});  
+    } else { // TODO: unneccsary?
+      data.push({"time" : t, "values" : []});
+    }
+  });
+
+
+  data_flattened = []
+  data.forEach(function(d){
+    var points = d["values"];
+    var dy = 0;
+    points.forEach(function(d2, i){
+      var v0 = dy;
+      var v1 = dy+d2;
+      dy = v1; // update offset
+      data_flattened.push({"time": d["time"], "y_low": v0, "y_high": v1, "i": i});  
+    })  
+  });
+
+  console.log(data_flattened);
+
+  var ymax = d3.max(data, function(dpts){
+    return d3.sum(dpts["values"], function(pt){ return pt;});
+  })
+
+  x.domain(time_domain);
+  y.domain([0, ymax]);
+
+  var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  .append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+  svg.append("g")
+      .attr("class", "x axis")
+      .attr("transform", "translate(0," + height + ")")
+      .call(xAxis)
+      .selectAll("text")  
+            .style("text-anchor", "end")
+            .style("font-size","5px")
+            .attr("dx", "-1.8em")
+            .attr("dy", "-.8em")
+            .attr("transform", "rotate(-65)" );
+
+  svg.append("g")
+      .attr("class", "y axis")
+      .call(yAxis)
+    .append("text")
+      .attr("transform", "rotate(-90)")
+      .attr("y", 6)
+      .attr("dy", ".71em")
+      .style("text-anchor", "end")
+      .text("Number of users");
+
+  foo = svg.selectAll("bar")
+      .data(data_flattened)
+    .enter().append("rect")
+      .style("fill", function(d){ return color(d["i"])})
+      .attr("x", function(d) { return x(d["time"]); })
+      .attr("width", x.rangeBand())
+      .attr("y", function(d) { return y(d["y_high"]); })
+      .attr("height", function(d) { return y(d["y_low"]) - y(d["y_high"]) });
+
+  var legend = svg.selectAll(".legend")
+      .data(color.domain().slice().reverse())
+    .enter().append("g")
+      .attr("class", "legend")
+      .attr("transform", function(d, i) { return "translate(0," + i * 20 + ")"; });
+
+  legend.append("rect")
+      .attr("x", width - 18)
+      .attr("width", 18)
+      .attr("height", 18)
+      .style("fill", color);
+
+  legend.append("text")
+      .attr("x", width - 24)
+      .attr("y", 9)
+      .attr("dy", ".35em")
+      .style("text-anchor", "end")
+      .text(function(d) { return languages[d]; });
+});
+
+</script>
+</html>
