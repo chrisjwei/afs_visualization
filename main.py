@@ -1,6 +1,6 @@
 #!/usr/bin/python2.7
 
-import subprocess, string, mysql.connector, urllib2
+import subprocess, string, sqlite3, urllib2, schedule, time
 
 _SERVER_NUM_LOW = 1
 _SERVER_NUM_HIGH = 6
@@ -9,7 +9,7 @@ _SUBPROCESS_TIMEOUT_SECONDS = 10
 
 _QUERY_SAVE_HISTORY = ("INSERT INTO login_history"
 	  "(serverid, who, what)"
-	  "VALUES (%s, %s, %s)")
+	  "VALUES (?, ?, ?)")
 
 _QUERY_INSERT_USER_TABLE = ("INSERT INTO users"
 		"(who, department, affiliation, studentLevel, studentClass)"
@@ -25,6 +25,7 @@ _DB_CONFIG = {"user":"cwei",
 
 _ANDREW_LOOKUP_GET = ("http://apis.scottylabs.org/directory/v1/{}/odb")
 
+_SCHEDULER_MIN = 1
 
 def get_user_data(andrewid):
 	get = _ANDREW_LOOKUP_GET.format(andrewid)
@@ -70,16 +71,26 @@ def retrieve_and_process(connection):
 	output = [""] * 6
 	for i in xrange(_SERVER_NUM_LOW, _SERVER_NUM_HIGH+1):
 		print "Hitting UNIX" + str(i)
-		output[i-1] = subprocess.check_output([_BASH_SCRIPT, str(i)])
+		try:
+			output[i-1] = subprocess.check_output([_BASH_SCRIPT, str(i)])
+		except:
+			print "Unable to connect to UNIX" + str(i)
 	for i in xrange(_SERVER_NUM_LOW, _SERVER_NUM_HIGH+1):
 		print "Processing UNIX" + str(i)
 		process_output(connection, i, output[i-1])
 
-def begin():
-	#TODO: add a scheduler
-	connection = mysql.connector.connect(**_DB_CONFIG)
+def job():
+	connection = sqlite3.connect('foo.db')
 	retrieve_and_process(connection)
 	connection.close()
+
+def begin():
+	job()
+	schedule.every(_SCHEDULER_MIN).minutes.do(job)
+	while(1):	
+		schedule.run_pending()
+		time.sleep(1)
+		
 
 
 if (__name__ == '__main__'):
